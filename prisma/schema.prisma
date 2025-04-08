@@ -1,0 +1,83 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String         @id @default(uuid())
+  email         String         @unique
+  password      String
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  driveAccounts DriveAccount[]
+  File          File[]
+  volumes       Volume[]
+}
+
+model DriveAccount {
+  id           String      @id @default(uuid())
+  userId       String      @db.VarChar(500)
+  provider     String // "google"
+  accountEmail String
+  accessToken  String      @db.Text
+  refreshToken String?     @db.Text
+  expiresAt    DateTime
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  user         User        @relation(fields: [userId], references: [id])
+  FileChunk    FileChunk[]
+
+  @@index([userId])
+}
+
+model FileChunk {
+  id            String       @id @default(uuid())
+  fileId        String
+  driveAccountId String
+  chunkIndex    Int
+  size          BigInt
+  driveFileId   String
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  file          File        @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  driveAccount  DriveAccount @relation(fields: [driveAccountId], references: [id])
+
+  @@index([fileId])
+  @@index([driveAccountId])
+}
+
+model Volume {
+  id          String    @id @default(uuid())
+  name        String
+  size        BigInt    // Total size in bytes
+  used        BigInt    @default(0) // Used space in bytes
+  userId      String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  files       File[]
+  user        User      @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+model File {
+  id          String      @id @default(uuid())
+  name        String
+  path        String
+  size        BigInt
+  mimeType    String
+  userId      String
+  volumeId    String
+  chunks      FileChunk[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  user        User        @relation(fields: [userId], references: [id])
+  volume      Volume      @relation(fields: [volumeId], references: [id])
+
+  @@index([userId])
+  @@index([volumeId])
+}
